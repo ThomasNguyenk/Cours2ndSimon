@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QCM Physique-Chimie - Seconde</title>
+
+<style>
+/* Reset & Base */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: url('https://cdn-imgix.headout.com/media/images/e4a728601dae2c994a2a7bba52d35e74-harrypotterlondon-13.jpg') 
+                no-repeat center center fixed;
+    background-size: cover;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container { max-width: 1000px; margin: 0 auto; }
+
+/* Header */
+header {
+    text-align: center;
+    padding: 30px 20px;
+    margin-bottom: 30px;
+    color: white;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+    background: url('https://media3.giphy.com/media/OZCZRFgOx9nGxd0XQf/giphy.gif') 
+                no-repeat center center;
+    background-size: cover;
+    border-radius: 10px;
+}
+h1 { font-size: 2.5rem; margin-bottom: 10px; }
+.subtitle { font-size: 1.2rem; opacity: 0.9; }
+
+/* Containers */
+.quiz-container, .leaderboard-container {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+.quiz-header, .leaderboard-header {
+    background: #2c3e50;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+.quiz-body, .leaderboard-body { padding: 30px; }
+
+/* Questions */
+.question {
+    margin-bottom: 30px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    background: #f9f9f9;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+}
+.question-number { font-weight: bold; color: #2575fc; margin-bottom: 10px; }
+.question-text { font-weight: bold; margin-bottom: 15px; color: #2c3e50; }
+.options { display: flex; flex-direction: column; gap: 12px; }
+.option { display: flex; align-items: center; gap: 12px; padding: 12px 15px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; }
+.option:hover { background: #edf7fd; border-color: #3498db; }
+.option input { cursor: pointer; transform: scale(1.2); }
+.option label { cursor: pointer; width: 100%; }
+
+/* Buttons */
+.buttons { display: flex; justify-content: center; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
+.btn { padding: 12px 25px; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 600; }
+.submit-btn { background: #3498db; color: white; }
+.submit-btn:hover { background: #2980b9; }
+.reset-btn { background: #e74c3c; color: white; }
+.reset-btn:hover { background: #c0392b; }
+.save-score-btn { background: #27ae60; color: white; }
+.save-score-btn:hover { background: #219653; }
+.show-leaderboard-btn { background: #8e44ad; color: white; }
+.show-leaderboard-btn:hover { background: #732d91; }
+
+/* Results */
+.results {
+    margin-top: 40px;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    display: none;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+}
+.score { font-size: 2rem; font-weight: bold; margin-bottom: 20px; }
+.score-details { font-size: 1.2rem; margin-bottom: 25px; }
+.message { font-size: 1.3rem; margin-bottom: 25px; padding: 15px; border-radius: 8px; }
+
+/* Leaderboard */
+.leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+.leaderboard-table th, .leaderboard-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+.leaderboard-table th { background-color: #f8f9fa; font-weight: bold; }
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 20px;
+    color: white;
+    font-size: 0.9rem;
+    opacity: 0.8;
+    border-radius: 10px;
+    background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.8)), url('https://i.pinimg.com/236x/5a/d8/77/5ad8779ec60744d790880a7f398f34cf.jpg') no-repeat center center;
+    background-size: cover;
+}
+</style>
+</head>
+<body>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // Vérification de l'accès et de la classe
+    const isConnected = localStorage.getItem("isLoggedIn") === "true";
+    const studentClass = localStorage.getItem("studentClass");
+
+    if (!isConnected) {
+        alert("⛔ Vous devez être connecté pour accéder au quiz.");
+        window.location.replace("Connexion étudiant.html");
+        return;
+    }
+    
+    // Si la classe est forcée à Première, le quiz de Seconde est masqué.
+    if (studentClass !== "Seconde" && studentClass !== "Première" && studentClass !== "Terminale") {
+        alert("⛔ Accès refusé. Veuillez vérifier votre statut de connexion.");
+        window.location.replace("index.html");
+    }
+});
+</script>
+
+<div class="container">
+<header>
+    <h1>QCM de Physique-Chimie</h1>
+    <p class="subtitle">Niveau Seconde - Testez vos connaissances</p>
+</header>
+
+<div class="quiz-container" id="quiz-container">
+    <div class="quiz-header">
+        <h2>Questionnaire à Choix Multiples</h2>
+        <p>20 questions - Choisissez la bonne réponse pour chaque question</p>
+    </div>
+    <div class="quiz-body">
+        <div id="quiz"></div>
+        <div class="buttons">
+            <button class="btn submit-btn" onclick="checkAnswers()">Soumettre les réponses</button>
+            <button class="btn reset-btn" onclick="resetQuiz()">Réinitialiser</button>
+        </div>
+        <div class="results" id="results">
+            <div class="score" id="score"></div>
+            <div class="score-details" id="score-details"></div>
+            
+            <div class="save-score-container" id="save-score-container">
+                <button class="btn save-score-btn" onclick="saveScore()">Enregistrer mon score</button>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn show-leaderboard-btn" onclick="showLeaderboard()">Voir mon classement</button>
+                <button class="btn reset-btn" onclick="resetQuiz()">Refaire le quiz</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="leaderboard-container" id="leaderboard-container" style="display:none;">
+    <div class="leaderboard-header">
+        <h2 id="leaderboard-title">Classement des Meilleurs Scores</h2>
+    </div>
+    <div class="leaderboard-body">
+        <table class="leaderboard-table">
+            <thead>
+                <tr><th>Position</th><th>Nom</th><th>Score</th><th>Date & Heure</th><th>Commentaire</th></tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+        </table>
+        <div class="buttons" style="justify-content:center; margin-top:20px;">
+            <button class="btn reset-btn" onclick="hideLeaderboard()">Retour au quiz</button>
+            <button class="btn reset-btn" onclick="clearLeaderboard()">Effacer mon classement</button>
+        </div>
+    </div>
+</div>
+
+<footer><p>&copy; 2025 Nguyen Thomas. Tous droits réservés.</p></footer>
+</div>
+
+
+
+<script>
+// --- CONFIGURATION PERSONNELLE ---
+const CURRENT_USER = localStorage.getItem("currentUser") || "Guest";
+const SCORE_STORAGE_KEY = `quizScores_${CURRENT_USER}_Seconde`; // Clé personnalisée par utilisateur et par niveau
+
+// --- BANQUE DE QUESTIONS ---
+const questionBank = [
+    {
+        question: "Quelle est l'unité de mesure de l'intensité du courant électrique ?",
+        options: ["Volt", "Ampère", "Ohm", "Watt"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quel gaz est majoritairement responsable de l'effet de serre additionnel dû aux activités humaines ?",
+        options: ["Oxygène (O₂)", "Diazote (N₂)", "Dioxyde de carbone (CO₂)", "Hydrogène (H₂)"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quelle est la formule chimique de l'eau ?",
+        options: ["CO₂", "H₂O", "O₂", "NaCl"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quel phénomène est principalement à l'origine des marées ?",
+        options: ["La rotation de la Terre", "L'attraction gravitationnelle de la Lune", "Les courants marins", "La pression atmosphérique"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quel est le pH d'une solution neutre à 25°C ?",
+        options: ["0", "7", "10", "14"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quelle est la particule chargée négativement dans un atome ?",
+        options: ["Proton", "Neutron", "Électron", "Nucléon"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel est le nom de la réaction chimique lors de laquelle une substance s'unit avec l'oxygène ?",
+        options: ["Réduction", "Oxydation", "Combustion", "Neutralisation"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quelle grandeur physique est mesurée en joules (J) ?",
+        options: ["Puissance", "Intensité", "Énergie", "Tension"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel est le nom de la force qui s'oppose au glissement de deux surfaces en contact ?",
+        options: ["Force gravitationnelle", "Force électromagnétique", "Force de frottement", "Force centrifuge"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel scientifique a formulé la loi de la gravitation universelle ?",
+        options: ["Albert Einstein", "Isaac Newton", "Galilée", "Stephen Hawking"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quel élément chimique a pour symbole 'Na' ?",
+        options: ["Nickel", "Néon", "Azote", "Sodium"],
+        correctAnswer: 3
+    },
+    {
+        question: "Quelle est la vitesse de la lumière dans le vide ?",
+        options: ["300 000 m/s", "3 000 000 m/s", "30 000 000 m/s", "300 000 000 m/s"],
+        correctAnswer: 3
+    },
+    {
+        question: "Quel type de transformation chimique produit de l'énergie thermique ?",
+        options: ["Réaction endothermique", "Réaction exothermique", "Réaction enzymatique", "Réaction d'oxydoréduction"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quelle est la formule qui relie la vitesse, la distance et le temps ?",
+        options: ["v = d × t", "v = d / t", "v = t / d", "d = v × t²"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quel gaz est nécessaire à la respiration des êtres vivants ?",
+        options: ["Diazote", "Dioxyde de carbone", "Dioxygène", "Hydrogène"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quelle est la formule chimique du sel de table ?",
+        options: ["H₂O", "CO₂", "NaCl", "C₆H₁₂O₆"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel instrument utilise-t-on pour mesurer la masse d'un objet ?",
+        options: ["Un dynamomètre", "Une balance", "Un voltmètre", "Un thermomètre"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quel état de la matière a un volume fixe mais pas de forme fixe ?",
+        options: ["Solide", "Liquide", "Gaz", "Plasma"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quelle particule détermine l'identité d'un atome ?",
+        options: ["Le neutron", "Le proton", "L'électron", "Le quark"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quel phénomène explique pourquoi un stylo plongé dans l'eau semble cassé ?",
+        options: ["La réflexion", "La réfraction", "La diffraction", "L'interférence"],
+        correctAnswer: 1
+    },
+    {
+        question: "Quelle est l'unité de mesure de la force dans le système international ?",
+        options: ["Le joule", "Le watt", "Le newton", "Le pascal"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel gaz est produit lors de la photosynthèse ?",
+        options: ["Dioxyde de carbone", "Diazote", "Dioxygène", "Hydrogène"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel est le principal gaz présent dans l'atmosphère terrestre ?",
+        options: ["Dioxygène", "Dioxyde de carbone", "Diazote", "Argon"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel type d'énergie utilise une éolienne ?",
+        options: ["Énergie hydraulique", "Énergie solaire", "Énergie éolienne", "Énergie géothermique"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel est le point d'ébullition de l'eau à pression atmosphérique normale ?",
+        options: ["0°C", "50°C", "100°C", "200°C"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel métal est liquide à température ambiante ?",
+        options: ["Fer", "Cuivre", "Mercure", "Aluminium"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quelle loi physique énonce que 'Tout corps plongé dans un fluide subit une poussée verticale égale au poids du volume de fluide déplacé' ?",
+        options: ["Loi de Newton", "Loi d'Ohm", "Principe d'Archimède", "Loi de Pascal"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quelle est la couleur qui correspond à la longueur d'onde la plus courte dans le spectre visible ?",
+        options: ["Rouge", "Vert", "Bleu", "Jaune"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel acide trouve-t-on dans le vinaigre ?",
+        options: ["Acide sulfurique", "Acide chlorhydrique", "Acide acétique", "Acide citrique"],
+        correctAnswer: 2
+    },
+    {
+        question: "Quel phénomène permet aux oiseaux de voler ?",
+        options: ["La poussée d'Archimède", "L'effet Bernoulli", "La force centrifuge", "La conduction thermique"],
+        correctAnswer: 1
+    }
+];
+
+// Variables
+let currentScore=0; let totalQuestions=20;
+
+// Sélection aléatoire
+function selectRandomQuestions(){
+    const shuffled=[...questionBank];
+    for(let i=shuffled.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+    }
+    return shuffled.slice(0,20);
+}
+
+// Génération du quiz
+function generateQuiz(){
+    const quizContainer=document.getElementById("quiz");
+    quizContainer.innerHTML="";
+    const selected=selectRandomQuestions();
+    window.correctAnswers={};
+    selected.forEach((q,index)=>{
+        const qNum=index+1;
+        window.correctAnswers[`q${qNum}`]=q.correctAnswer;
+        quizContainer.innerHTML+=`
+            <div class="question">
+                <div class="question-number">Question ${qNum}/20</div>
+                <div class="question-text">${q.question}</div>
+                <div class="options">
+                    ${q.options.map((opt,i)=>`
+                        <label class="option">
+                            <input type="radio" name="q${qNum}" value="${i}">${String.fromCharCode(97+i)}) ${opt}
+                        </label>`).join("")}
+                </div>
+            </div>`; // <div class="explanation"> est retiré
+    });
+}
+
+// Vérification des réponses
+function checkAnswers(){
+    let score=0;
+    totalQuestions=Object.keys(window.correctAnswers).length;
+    for(let i=1;i<=totalQuestions;i++){
+        const questionName="q"+i;
+        const selected=document.querySelector(`input[name=${questionName}]:checked`);
+        const questionElement=document.querySelectorAll(".question")[i-1];
+        questionElement.classList.remove("correct","incorrect");
+        if(selected){
+            if(parseInt(selected.value)===window.correctAnswers[questionName]){score++;questionElement.classList.add("correct");}
+            else{questionElement.classList.add("incorrect");}
+        }
+        // Pas d'affichage des explications (conformément à la demande précédente)
+    }
+    currentScore=score;
+    document.getElementById("score").textContent=`Score: ${score}/${totalQuestions}`;
+    document.getElementById("score-details").textContent=`Vous avez répondu correctement à ${score} questions sur ${totalQuestions}.`;
+    document.getElementById("save-score-container").style.display="block";
+    document.getElementById("results").style.display="block";
+}
+
+// Sauvegarde du score (PERSONNELLE)
+function saveScore(){
+    const playerName = CURRENT_USER; // Nom d'utilisateur connecté
+    
+    if(playerName === "Guest" || !localStorage.getItem("isLoggedIn")){
+        alert("Erreur: Vous devez être connecté pour enregistrer votre score.");
+        document.getElementById("save-score-container").style.display="none";
+        return;
+    }
+
+    // Récupération des scores personnels
+    const scores = JSON.parse(localStorage.getItem(SCORE_STORAGE_KEY)) || [];
+    
+    scores.push({
+        name: playerName,
+        score: currentScore,
+        total: totalQuestions,
+        date: new Date().toLocaleDateString("fr-FR"),
+        time: new Date().toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' }) // Ajout de l'heure
+    });
+    
+    // Tri des scores par pourcentage décroissant (meilleur score en premier)
+    scores.sort((a, b) => ((b.score / b.total) - (a.score / a.total)));
+    
+    // Sauvegarde des 10 meilleurs scores personnels
+    localStorage.setItem(SCORE_STORAGE_KEY, JSON.stringify(scores.slice(0, 10)));
+    
+    alert(`Score enregistré avec succès pour ${playerName}!`);
+    document.getElementById("save-score-container").style.display="none";
+}
+
+// Commentaire
+function getComment(score,total){
+    const pct=(score/total)*100;
+    if(pct>=90) return "Excellent ! 🌟";
+    if(pct>=70) return "Bien joué 🙂";
+    if(pct>=50) return "Peut mieux faire 😐";
+    return "À revoir 🔴";
+}
+
+// Classement (PERSONNEL)
+function showLeaderboard(){
+    const leaderboard=document.getElementById("leaderboard-container");
+    const body=document.getElementById("leaderboard-body");
+    
+    // Récupération des scores personnels
+    const scores = JSON.parse(localStorage.getItem(SCORE_STORAGE_KEY)) || [];
+    
+    // Mise à jour du titre
+    document.getElementById("leaderboard-title").textContent = `Mon Classement Personnel (Joueur : ${CURRENT_USER})`;
+
+    body.innerHTML="";
+    if(scores.length===0){
+        body.innerHTML='<tr><td colspan="5" style="text-align:center;">Aucun score personnel enregistré.</td></tr>';
+    } else {
+        scores.forEach((s,i)=>{
+            const pct=((s.score/s.total)*100).toFixed(1);
+            const comment=getComment(s.score,s.total);
+            // On affiche le nom et le score
+            body.innerHTML+=`<tr><td>${i+1}</td><td>${s.name}</td><td>${s.score}/${s.total} (${pct}%)</td><td>${s.date} à ${s.time}</td><td>${comment}</td></tr>`;
+        });
+    }
+    document.getElementById("quiz-container").style.display="none";
+    leaderboard.style.display="block";
+}
+
+function hideLeaderboard(){document.getElementById("leaderboard-container").style.display="none";document.getElementById("quiz-container").style.display="block";}
+
+// Effacement du classement (PERSONNEL)
+function clearLeaderboard(){ 
+    if(confirm("Voulez-vous vraiment effacer tout VOTRE classement personnel ?")){
+        localStorage.removeItem(SCORE_STORAGE_KEY);
+        document.getElementById("leaderboard-body").innerHTML='<tr><td colspan="5" style="text-align:center;">Aucun score personnel enregistré.</td></tr>';
+        alert("Votre classement personnel a été effacé.");
+    } 
+}
+
+function resetQuiz(){
+    document.getElementById("quiz").innerHTML="";
+    generateQuiz();
+    // document.querySelectorAll(".explanation").forEach(e=>e.style.display="none"); // Pas nécessaire, car plus d'explications
+    document.getElementById("results").style.display="none";
+    document.getElementById("save-score-container").style.display="none";
+}
+
+// Initialisation
+window.onload=generateQuiz;
+</script>
+</body>
+</html>
