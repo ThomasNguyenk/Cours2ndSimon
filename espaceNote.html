@@ -147,6 +147,7 @@ button:hover { transform: scale(1.05); }
 .dynamic-btn { background: #2ecc71; color: white; }
 .generate-btn { background: #9b59b6; color: white; }
 .save-btn { background: #f39c12; color: white; }
+.export-btn { background: #3498db; color: white; } /* Nouveau style */
 
 /* === NOTES === */
 .note {
@@ -169,11 +170,12 @@ button:hover { transform: scale(1.05); }
 }
 
 /* === CARTE MENTALE === */
+/* Le style CSS du canvas doit utiliser des unités relatives pour s'adapter au conteneur */
 canvas {
     border: 2px solid #007bff;
     border-radius: 10px;
-    width: 100%;
-    height: 500px;
+    width: 100%; /* S'adapte au conteneur */
+    height: 500px; /* Hauteur par défaut (sera modifiée par JS) */
     background: rgba(255,255,255,0.8);
     cursor: grab;
 }
@@ -198,6 +200,8 @@ canvas {
     to {opacity: 1; transform: translateY(0);}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -215,13 +219,13 @@ canvas {
 </div>
 
 <main>
-    <div class="note-section">
+    <div class="note-section" id="noteSection">
         <h2>📝 Mes Notes</h2>
         <input type="text" id="themeInput" placeholder="Thème principal (ex : Énergie, Chimie...)">
         <textarea id="noteInput" placeholder="Écris ta note ici... (Entrée pour valider, Maj+Entrée pour aller à la ligne)"></textarea>
         <button class="add-btn" onclick="ajouterNote()">Ajouter</button>
         <button class="generate-btn" onclick="generateMindmapFromNotes()">Générer Carte Mentale</button>
-        <div id="notesContainer"></div>
+        <button class="export-btn" onclick="exportToPDF()">⬇️ Télécharger PDF</button> <div id="notesContainer"></div>
     </div>
 
     <div class="mindmap-section">
@@ -237,7 +241,7 @@ canvas {
             <button class="save-btn" onclick="saveMindmap()">💾 Sauvegarder</button>
             <button class="generate-btn" onclick="loadMindmap()">📂 Recharger</button>
             <button class="clear-btn" onclick="clearMindmap()">🗑️ Effacer</button>
-        </div>
+            <button class="add-btn" onclick="resizeCanvas(1)">➕ Agrandir</button> <button class="clear-btn" onclick="resizeCanvas(-1)">➖ Réduire</button> </div>
         <canvas id="mindmapCanvas" width="600" height="500"></canvas>
     </div>
 </main>
@@ -263,6 +267,7 @@ let animationFrame;
 // Constantes pour le redimensionnement du texte
 const FONT_SIZE = 13;
 const LINE_HEIGHT = 16;
+const CANVAS_RESIZE_STEP = 200; // Pas d'agrandissement en pixels
 
 /**
  * Calcule la taille optimale de la bulle en fonction du texte.
@@ -271,17 +276,15 @@ function calculateBubbleSize(text, isCenter = false) {
     // S'assurer que le contexte est prêt pour la mesure
     ctx.font = `${FONT_SIZE}px Poppins`;
     
-    // Tailles minimales et largeur maximale pour le texte dans une bulle
-    const minSize = isCenter ? 100 : 70; // Taille minimale pour le diamètre/largeur
-    const maxTextWidth = isCenter ? 250 : 150; // Largeur max autorisée avant retour à la ligne
-    const padding = 20; // Espace de sécurité entre le texte et le bord de la bulle
+    const minSize = isCenter ? 100 : 70; 
+    const maxTextWidth = isCenter ? 250 : 150; 
+    const padding = 20; 
 
     let lines = [];
     let currentLine = '';
     let maxLineWidth = 0;
     const words = text.split(' ');
 
-    // Logique de retour à la ligne pour le texte long
     for (let i = 0; i < words.length; i++) {
         const word = words[i];
         const testLine = currentLine + word + ' ';
@@ -298,19 +301,17 @@ function calculateBubbleSize(text, isCenter = false) {
     lines.push(currentLine.trim());
     maxLineWidth = Math.max(maxLineWidth, ctx.measureText(lines[lines.length - 1]).width);
     
-    // Calcul de la hauteur et largeur finales de la bulle
     const totalTextHeight = lines.length * LINE_HEIGHT;
     let height = Math.max(minSize * 0.9, totalTextHeight + padding);
     let width = Math.max(minSize * 1.5, maxLineWidth + padding);
     
-    // Assure que la bulle centrale est approximativement ronde
     if (isCenter || (lines.length === 1 && width < height)) {
         const maxDim = Math.max(width, height) + 10;
         width = maxDim;
         height = maxDim;
     }
     
-    const radius = Math.max(width, height) / 2; // Rayon utilisé pour les connexions et la physique
+    const radius = Math.max(width, height) / 2;
 
     return {
         width: width,
@@ -329,7 +330,6 @@ function ajouterNote() {
     if (!text) return;
     const div = document.createElement("div");
     div.className = "note";
-    // Utilise une balise <p> pour stocker le texte propre
     const p = document.createElement("p");
     p.textContent = text;
     div.appendChild(p);
@@ -389,7 +389,6 @@ function generateMindmapFromNotes() {
     const shape = "circle";
     const color = "#f39c12";
 
-    // Calcul de taille pour la bulle centrale
     const centerSize = calculateBubbleSize(theme, true);
 
     centerBubble = { 
@@ -410,7 +409,6 @@ function generateMindmapFromNotes() {
     const noteColor = document.getElementById("bubbleColor").value;
 
     notes.forEach((text, i) => {
-        // Calcul de taille pour les bulles de notes
         const noteSize = calculateBubbleSize(text, false);
 
         const angle = (i / notes.length) * 2 * Math.PI;
@@ -441,7 +439,6 @@ canvas.addEventListener("mousedown", e => {
     
     selectedBubble = bubbles.find(b => {
         const detectionRadius = b.radius;
-        // Permet de cliquer légèrement en dehors de la bulle pour la sélection
         return Math.hypot(b.x - x, b.y - y) < detectionRadius * 1.2; 
     });
     
@@ -488,7 +485,6 @@ function draw() {
 
     // Dessin des bulles
     for (let b of bubbles) {
-        // Recalculer la taille si les lignes ou la hauteur manquent (sécurité/chargement)
         if (!b.lines || !b.totalTextHeight) {
              const calculatedSize = calculateBubbleSize(b.text, b.isCenter);
              Object.assign(b, calculatedSize);
@@ -526,11 +522,8 @@ function draw() {
         ctx.font = `${FONT_SIZE}px Poppins`;
         ctx.textAlign = "center";
         
-        // Calcule le point de départ Y pour centrer le bloc de texte verticalement
-        // Centre Y de la bulle - (Hauteur totale du texte / 2) + (Taille de police / 2)
         let lineY = b.y - (totalTextHeight / 2) + (FONT_SIZE / 2);
 
-        // Dessine chaque ligne pré-calculée et centrée
         for (let i = 0; i < lines.length; i++) {
             ctx.fillText(lines[i], b.x, lineY);
             lineY += LINE_HEIGHT;
@@ -560,7 +553,6 @@ function animate() {
             const dy = b.y - other.y;
             const dist = Math.hypot(dx, dy);
             
-            // Calcul de la distance minimale basée sur le rayon de chaque bulle
             const minDistance = b.radius + other.radius + 15; 
 
             if (dist < minDistance && dist > 0) {
@@ -585,7 +577,6 @@ function animate() {
 
 /* Sauvegarde */
 function saveMindmap() {
-    // Sauvegarde toutes les propriétés, y compris les nouvelles dimensions
     localStorage.setItem("mindmap_bubbles", JSON.stringify(bubbles)); 
     localStorage.setItem("mindmap_connections", JSON.stringify(connections));
     alert("💾 Carte mentale sauvegardée !");
@@ -597,12 +588,11 @@ function loadMindmap() {
     
     if (savedBubbles.length === 0) return alert("Aucune carte mentale enregistrée !");
     
-    // Recalcul des propriétés de taille au chargement pour garantir la cohérence
     bubbles = savedBubbles.map(b => {
         const isCenter = b.text === localStorage.getItem("theme") || b.isCenter;
         return {
             ...b,
-            ...calculateBubbleSize(b.text, isCenter) // Recalcule la taille et les lignes
+            ...calculateBubbleSize(b.text, isCenter) 
         };
     });
 
@@ -619,9 +609,108 @@ function loadMindmap() {
 
 function clearMindmap() { bubbles = []; connections = []; centerBubble = null; draw(); }
 
+/* --- NOUVELLE FONCTIONNALITÉ 1 : EXPORT PDF --- */
+
+/**
+ * Exporte la section des notes et le canvas de la carte mentale en un seul fichier PDF.
+ */
+function exportToPDF() {
+    // Utiliser window.jsPDF du script inclus
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    let y_offset = 10;
+    const page_width = doc.internal.pageSize.getWidth();
+    const margin = 10;
+
+    // 1. Ajouter les NOTES (HTML)
+    const noteSection = document.getElementById('noteSection');
+    
+    // Pour une meilleure apparence dans le PDF, on ne veut pas du bouton de téléchargement dans le rendu
+    const exportButton = noteSection.querySelector('.export-btn');
+    exportButton.style.display = 'none';
+
+    doc.setFontSize(18);
+    doc.text("📝 Mes Notes", margin, y_offset);
+    y_offset += 10;
+    doc.setFontSize(12);
+
+    // Utiliser html2canvas pour rendre la section des notes en image (plus fiable que le rendu HTML de jspdf)
+    html2canvas(noteSection, {
+        scale: 2 // Améliore la qualité
+    }).then(note_canvas => {
+        const imgData_notes = note_canvas.toDataURL('image/png');
+        const imgWidth_notes = page_width - (2 * margin);
+        const imgHeight_notes = (note_canvas.height * imgWidth_notes) / note_canvas.width;
+
+        doc.addImage(imgData_notes, 'PNG', margin, y_offset, imgWidth_notes, imgHeight_notes);
+        y_offset += imgHeight_notes + 10;
+
+        // 2. Ajouter la CARTE MENTALE (Canvas)
+        doc.addPage();
+        y_offset = 10;
+        doc.setFontSize(18);
+        doc.text("🧠 Carte Mentale", margin, y_offset);
+        y_offset += 10;
+
+        // Récupérer l'image du canvas de la carte mentale
+        const imgData_mindmap = canvas.toDataURL('image/png');
+        const imgWidth_mindmap = page_width - (2 * margin);
+        // Calculer la hauteur en gardant le ratio du canvas
+        const canvas_ratio = canvas.height / canvas.width;
+        const imgHeight_mindmap = imgWidth_mindmap * canvas_ratio;
+
+        doc.addImage(imgData_mindmap, 'PNG', margin, y_offset, imgWidth_mindmap, imgHeight_mindmap);
+
+        // 3. Finalisation et téléchargement
+        const theme = document.getElementById("themeInput").value.trim() || "Notes";
+        doc.save(`${theme}_mindmap_notes.pdf`);
+        
+        // Réafficher le bouton après l'exportation
+        exportButton.style.display = 'block';
+    });
+}
+
+/* --- NOUVELLE FONCTIONNALITÉ 2 : AGRANDIR L'ESPACE --- */
+
+/**
+ * Agrandit ou réduit la taille du canvas.
+ * @param {number} direction - 1 pour agrandir, -1 pour réduire.
+ */
+function resizeCanvas(direction) {
+    const newWidth = canvas.width + direction * CANVAS_RESIZE_STEP;
+    const newHeight = canvas.height + direction * CANVAS_RESIZE_STEP;
+    
+    const minSize = 400; // Taille minimale pour éviter la destruction
+
+    if (newWidth >= minSize && newHeight >= minSize) {
+        // Redimensionnement de l'élément canvas
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        
+        // Ajuster le style CSS pour que la zone de dessin reste visible
+        canvas.style.height = `${newHeight}px`;
+
+        // Réinitialiser la position des bulles si le canvas était vide ou si on agrandit beaucoup
+        if (bubbles.length === 0 || direction === 1) {
+            // Optionnel : Régénérer la carte mentale au centre si elle existe
+            if (centerBubble) {
+                centerBubble.x = newWidth / 2;
+                centerBubble.y = newHeight / 2;
+                // Si vous voulez repositionner toutes les bulles, vous pouvez rappeler generateMindmapFromNotes()
+            }
+        }
+        
+        draw(); // Redessiner la carte dans les nouvelles dimensions
+    } else if (direction === -1) {
+        alert("La carte mentale a atteint sa taille minimale.");
+    }
+}
+
+
 window.onload = () => { 
-    // Assurer que le contexte est prêt pour la mesure de texte au chargement
     ctx.font = `${FONT_SIZE}px Poppins`; 
+    // Au chargement, assurez-vous que le style CSS est synchronisé avec les attributs HTML
+    canvas.style.height = `${canvas.height}px`; 
     loadNotes(); 
     loadMindmap(); 
 };
