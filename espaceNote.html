@@ -553,7 +553,7 @@ function animate() {
             if (b === other) continue;
 
             const dx = b.x - other.x;
-            const dy = b.y - other.x; // NOTE: Correction possible ici, était 'b.x - other.x'
+            const dy = b.y - other.y;
             const dist = Math.hypot(dx, dy);
             
             const minDistance = b.radius + other.radius + 15; 
@@ -618,7 +618,6 @@ function clearMindmap() { bubbles = []; connections = []; centerBubble = null; d
  * Exporte la section des notes (texte direct) et le canvas de la carte mentale (image) en un seul fichier PDF.
  */
 function exportToPDF() {
-    // Utiliser window.jsPDF du script inclus
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
     let y_offset = 15; // Décalage initial
@@ -633,7 +632,7 @@ function exportToPDF() {
 
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
-    doc.text("📝 " + theme, margin, y_offset);
+    doc.text("Thème : " + theme, margin, y_offset);
     y_offset += 15;
     
     doc.setFontSize(14);
@@ -646,17 +645,13 @@ function exportToPDF() {
     
     // Parcourir chaque note
     notes.forEach((text, index) => {
-        // Le texte est divisé en lignes pour s'adapter à la largeur du PDF
         const splitText = doc.splitTextToSize(text, text_wrap_width); 
-        
-        // Calculer la hauteur nécessaire pour cette note
-        const note_height = (splitText.length * 5) + 4; // 5mm par ligne, +4mm de marge
+        const note_height = (splitText.length * 5) + 4; 
 
         // Vérification de saut de page
         if (y_offset + note_height + line_spacing > doc.internal.pageSize.getHeight() - margin) {
             doc.addPage();
             y_offset = margin;
-            // On répète le titre des notes sur la nouvelle page pour le contexte si besoin
             doc.setFontSize(14);
             doc.setFont("helvetica", "normal");
             doc.text("Détail des Notes (suite) :", margin, y_offset);
@@ -668,9 +663,9 @@ function exportToPDF() {
         doc.setFillColor(0, 123, 255); 
         doc.rect(margin - 2, y_offset - 2, 2, note_height, "F"); 
 
-        // Dessin du texte (l'offset Y est ajusté pour le début du texte)
+        // Dessin du texte 
         doc.text(splitText, margin + 2, y_offset + 3); 
-        y_offset += note_height + line_spacing; // Avance l'offset pour la prochaine note
+        y_offset += note_height + line_spacing; 
     });
 
     // 2. Ajouter la CARTE MENTALE (Canvas)
@@ -678,31 +673,26 @@ function exportToPDF() {
     y_offset = 15;
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
-    doc.text("🧠 Carte Mentale", margin, y_offset);
+    doc.text("Carte Mentale", margin, y_offset);
     y_offset += 15;
     
-    // Convertir le canvas en image
     const imgData_mindmap = canvas.toDataURL('image/png');
     const imgWidth_mindmap = page_width - (2 * margin);
     
     const canvas_ratio = canvas.height / canvas.width;
     let imgHeight_mindmap = imgWidth_mindmap * canvas_ratio;
 
-    // Ajustement de la hauteur si elle dépasse la page
     if (imgHeight_mindmap > doc.internal.pageSize.getHeight() - y_offset - margin) {
         imgHeight_mindmap = doc.internal.pageSize.getHeight() - y_offset - margin;
-        // La largeur est redimensionnée proportionnellement, mais ici, on peut supposer
-        // que la carte doit tenir sur une seule page si possible.
     }
 
     doc.addImage(imgData_mindmap, 'PNG', margin, y_offset, imgWidth_mindmap, imgHeight_mindmap);
 
-    // 3. Finalisation et téléchargement
-    const safeTheme = theme.replace(/[^a-z0-9]/gi, '_').substring(0, 50);
-    doc.save(`${safeTheme}_carte_mentale_notes.pdf`);
+    // 3. Finalisation et téléchargement - TITRE MODIFIÉ ICI
+    doc.save("PDF de mes notes et de ma carte mentale.pdf");
 }
 
-/* --- FONCTIONNALITÉ 2 : AGRANDIR L'ESPACE (inchangée) --- */
+/* --- FONCTIONNALITÉ 2 : AGRANDIR L'ESPACE --- */
 
 /**
  * Agrandit ou réduit la taille du canvas.
@@ -718,16 +708,15 @@ function resizeCanvas(direction) {
         canvas.width = newWidth;
         canvas.height = newHeight;
         
-        // Ajuster le style CSS pour que la zone de dessin soit correctement affichée
+        // Ajuster le style CSS
         canvas.style.height = `${newHeight}px`;
 
-        // Réaligner la bulle centrale au nouveau milieu si on agrandit
         if (direction === 1 && centerBubble) {
             centerBubble.x = newWidth / 2;
             centerBubble.y = newHeight / 2;
         }
         
-        draw(); // Redessiner la carte
+        draw(); 
     } else if (direction === -1) {
         alert("La carte mentale a atteint sa taille minimale.");
     }
@@ -736,7 +725,6 @@ function resizeCanvas(direction) {
 
 window.onload = () => { 
     ctx.font = `${FONT_SIZE}px Poppins`; 
-    // Au chargement, assurez-vous que le style CSS est synchronisé avec les attributs HTML
     canvas.style.height = `${canvas.height}px`; 
     loadNotes(); 
     loadMindmap(); 
