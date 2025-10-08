@@ -260,36 +260,64 @@ let offsetX, offsetY;
 let dynamicMode = false;
 let animationFrame;
 
-// ** NOUVELLE FONCTION **
+// Constantes pour le redimensionnement du texte
+const FONT_SIZE = 13;
+const LINE_HEIGHT = 16;
+
 /**
- * Calcule la taille d'une bulle en fonction de la longueur du texte.
- * @param {string} text Le texte de la bulle.
- * @param {boolean} isCenter Indique si c'est la bulle centrale (plus grande).
- * @returns {{width: number, height: number, radius: number}} Les dimensions de la bulle.
+ * Calcule la taille optimale de la bulle en fonction du texte.
  */
 function calculateBubbleSize(text, isCenter = false) {
-    const minTextLength = 10;
-    const maxTextLength = 100;
-    const minSize = isCenter ? 60 : 40;
-    const maxSize = isCenter ? 120 : 80;
+    // S'assurer que le contexte est prêt pour la mesure
+    ctx.font = `${FONT_SIZE}px Poppins`;
+    
+    // Tailles minimales et largeur maximale pour le texte dans une bulle
+    const minSize = isCenter ? 100 : 70; // Taille minimale pour le diamètre/largeur
+    const maxTextWidth = isCenter ? 250 : 150; // Largeur max autorisée avant retour à la ligne
+    const padding = 20; // Espace de sécurité entre le texte et le bord de la bulle
 
-    const length = text.length;
-    // Normalise la longueur du texte entre 0 et 1
-    const normalizedLength = Math.min(1, Math.max(0, (length - minTextLength) / (maxTextLength - minTextLength)));
+    let lines = [];
+    let currentLine = '';
+    let maxLineWidth = 0;
+    const words = text.split(' ');
 
-    // Calcule la taille basée sur la normalisation
-    const size = minSize + normalizedLength * (maxSize - minSize);
+    // Logique de retour à la ligne pour le texte long
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const testLine = currentLine + word + ' ';
+        const metrics = ctx.measureText(testLine);
 
-    // Ajustements pour différentes formes
-    const radius = size / 2;
-    // Garde un ratio pour le rectangle pour ne pas avoir des formes trop plates ou trop carrées
-    const width = size * 1.8;
-    const height = size * 0.9;
+        if (metrics.width > maxTextWidth && i > 0) {
+            lines.push(currentLine.trim());
+            currentLine = word + ' ';
+            maxLineWidth = Math.max(maxLineWidth, ctx.measureText(lines[lines.length - 1]).width);
+        } else {
+            currentLine = testLine;
+        }
+    }
+    lines.push(currentLine.trim());
+    maxLineWidth = Math.max(maxLineWidth, ctx.measureText(lines[lines.length - 1]).width);
+    
+    // Calcul de la hauteur et largeur finales de la bulle
+    const totalTextHeight = lines.length * LINE_HEIGHT;
+    let height = Math.max(minSize * 0.9, totalTextHeight + padding);
+    let width = Math.max(minSize * 1.5, maxLineWidth + padding);
+    
+    // Assure que la bulle centrale est approximativement ronde
+    if (isCenter || (lines.length === 1 && width < height)) {
+        const maxDim = Math.max(width, height) + 10;
+        width = maxDim;
+        height = maxDim;
+    }
+    
+    const radius = Math.max(width, height) / 2; // Rayon utilisé pour les connexions et la physique
 
     return {
         width: width,
         height: height,
-        radius: radius
+        radius: radius,
+        lines: lines, 
+        totalTextHeight: totalTextHeight
     };
 }
 
@@ -301,7 +329,7 @@ function ajouterNote() {
     if (!text) return;
     const div = document.createElement("div");
     div.className = "note";
-    // Utilise une balise pour mieux gérer l'affichage dans la note ET dans la carte
+    // Utilise une balise <p> pour stocker le texte propre
     const p = document.createElement("p");
     p.textContent = text;
     div.appendChild(p);
@@ -315,22 +343,18 @@ function ajouterNote() {
     input.value = "";
     saveNotes();
 }
-
 document.getElementById("noteInput").addEventListener("keydown", e => {
     if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         ajouterNote();
     }
 });
-
 function saveNotes() {
-    // Récupère le texte de la balise <p> à l'intérieur de chaque .note
     const notes = [...document.querySelectorAll(".note p")].map(p => p.textContent.trim());
     const theme = document.getElementById("themeInput").value.trim();
     localStorage.setItem("notes", JSON.stringify(notes));
     localStorage.setItem("theme", theme);
 }
-
 function loadNotes() {
     const saved = JSON.parse(localStorage.getItem("notes") || "[]");
     const theme = localStorage.getItem("theme") || "";
@@ -365,7 +389,7 @@ function generateMindmapFromNotes() {
     const shape = "circle";
     const color = "#f39c12";
 
-    // ** MODIFICATION 1 : Calcul de taille pour la bulle centrale **
+    // Calcul de taille pour la bulle centrale
     const centerSize = calculateBubbleSize(theme, true);
 
     centerBubble = { 
@@ -376,22 +400,22 @@ function generateMindmapFromNotes() {
         color, 
         vx: 0, 
         vy: 0, 
-        ...centerSize // Ajout des propriétés de taille
+        isCenter: true,
+        ...centerSize 
     };
     bubbles.push(centerBubble);
 
-    const radius = 250; // Augmenté pour laisser de la place aux grandes bulles
+    const radius_dispersion = 250; 
     const noteShape = document.getElementById("bubbleShape").value;
     const noteColor = document.getElementById("bubbleColor").value;
 
     notes.forEach((text, i) => {
-        const angle = (i / notes.length) * 2 * Math.PI;
-        
-        // ** MODIFICATION 2 : Calcul de taille pour les bulles de notes **
+        // Calcul de taille pour les bulles de notes
         const noteSize = calculateBubbleSize(text, false);
 
-        const x = centerX + radius * Math.cos(angle);
-        const y = centerY + radius * Math.sin(angle);
+        const angle = (i / notes.length) * 2 * Math.PI;
+        const x = centerX + radius_dispersion * Math.cos(angle);
+        const y = centerY + radius_dispersion * Math.sin(angle);
         const b = { 
             text, 
             x, 
@@ -400,7 +424,8 @@ function generateMindmapFromNotes() {
             color: noteColor, 
             vx: 0, 
             vy: 0,
-            ...noteSize // Ajout des propriétés de taille
+            isCenter: false,
+            ...noteSize 
         };
         bubbles.push(b);
         connections.push({ a: centerBubble, b });
@@ -414,10 +439,10 @@ canvas.addEventListener("mousedown", e => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // ** MODIFICATION 3 : Utilisation du rayon/taille pour la détection de clic **
     selectedBubble = bubbles.find(b => {
-        const detectionRadius = b.radius || Math.max(b.width, b.height) / 2;
-        return Math.hypot(b.x - x, b.y - y) < detectionRadius * 1.5; // Multiplié par 1.5 pour une détection plus facile
+        const detectionRadius = b.radius;
+        // Permet de cliquer légèrement en dehors de la bulle pour la sélection
+        return Math.hypot(b.x - x, b.y - y) < detectionRadius * 1.2; 
     });
     
     if (selectedBubble) {
@@ -436,7 +461,7 @@ canvas.addEventListener("mousemove", e => {
 });
 canvas.addEventListener("mouseup", () => dragging = false);
 
-// ** MODIFICATION 4 : Mise à jour de la fonction draw() pour utiliser les tailles dynamiques **
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = "#555";
@@ -444,16 +469,15 @@ function draw() {
 
     // Dessin des connexions
     for (let c of connections) {
-        // Le rayon d'une bulle est utilisé pour calculer l'endroit où la ligne commence/s'arrête
-        const r_a = c.a.radius || (c.a.width / 2); // Rayon de A
-        const r_b = c.b.radius || (c.b.width / 2); // Rayon de B
+        const r_a = c.a.radius; 
+        const r_b = c.b.radius; 
 
         const angleA = Math.atan2(c.b.y - c.a.y, c.b.x - c.a.x);
         const angleB = Math.atan2(c.a.y - c.b.y, c.a.x - c.b.x);
 
-        const ax = c.a.x + Math.cos(angleA) * r_a; // Utilise le rayon de A
+        const ax = c.a.x + Math.cos(angleA) * r_a; 
         const ay = c.a.y + Math.sin(angleA) * r_a;
-        const bx = c.b.x + Math.cos(angleB) * r_b; // Utilise le rayon de B
+        const bx = c.b.x + Math.cos(angleB) * r_b; 
         const by = c.b.y + Math.sin(angleB) * r_b;
 
         ctx.beginPath();
@@ -464,13 +488,20 @@ function draw() {
 
     // Dessin des bulles
     for (let b of bubbles) {
-        const { width, height, radius } = b;
+        // Recalculer la taille si les lignes ou la hauteur manquent (sécurité/chargement)
+        if (!b.lines || !b.totalTextHeight) {
+             const calculatedSize = calculateBubbleSize(b.text, b.isCenter);
+             Object.assign(b, calculatedSize);
+        }
+
+        const { width, height, radius, lines, totalTextHeight } = b;
         const halfWidth = width / 2;
         const halfHeight = height / 2;
 
         ctx.fillStyle = b.color;
         ctx.beginPath();
 
+        // Dessin de la forme
         if (b.shape === "circle") {
             ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
         } else if (b.shape === "rectangle") {
@@ -492,49 +523,34 @@ function draw() {
 
         // Ajout du texte
         ctx.fillStyle = "#fff";
-        ctx.font = "13px Poppins";
+        ctx.font = `${FONT_SIZE}px Poppins`;
         ctx.textAlign = "center";
         
-        // Gérer le retour à la ligne si le texte est trop long
-        const words = b.text.split(' ');
-        let line = '';
-        let lineY = b.y - (halfHeight) + 18; // Position de la première ligne
-        
-        // Fonction pour déterminer la largeur maximale du texte, en fonction de la bulle
-        const maxTextWidth = width - 10; 
+        // Calcule le point de départ Y pour centrer le bloc de texte verticalement
+        // Centre Y de la bulle - (Hauteur totale du texte / 2) + (Taille de police / 2)
+        let lineY = b.y - (totalTextHeight / 2) + (FONT_SIZE / 2);
 
-        // Permet un retour à la ligne pour le texte long
-        for (let n = 0; n < words.length; n++) {
-            let testLine = line + words[n] + ' ';
-            let metrics = ctx.measureText(testLine);
-            let testWidth = metrics.width;
-            if (testWidth > maxTextWidth && n > 0) {
-                ctx.fillText(line.trim(), b.x, lineY);
-                line = words[n] + ' ';
-                lineY += 16; // Espace entre les lignes
-            } else {
-                line = testLine;
-            }
+        // Dessine chaque ligne pré-calculée et centrée
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], b.x, lineY);
+            lineY += LINE_HEIGHT;
         }
-        ctx.fillText(line.trim(), b.x, lineY);
     }
 }
 
 /* Mode dynamique */
 function toggleDynamic() {
     dynamicMode = !dynamicMode;
-    // Mise à jour de la bulle centrale pour rester fixe
     if (centerBubble) centerBubble.isCenter = true; 
 
     if (dynamicMode) animate();
     else cancelAnimationFrame(animationFrame);
 }
 
-// ** MODIFICATION 5 : Ajustement de la physique pour éviter le chevauchement avec des tailles variables **
 function animate() {
     for (let b of bubbles) {
         if (b.isCenter) {
-            b.vx = 0; b.vy = 0; // Le centre ne bouge pas
+            b.vx = 0; b.vy = 0; 
         }
         
         for (let other of bubbles) {
@@ -544,11 +560,10 @@ function animate() {
             const dy = b.y - other.y;
             const dist = Math.hypot(dx, dy);
             
-            // Calcul de la distance minimale basée sur les tailles
-            const minDistance = (b.radius || b.width/2) + (other.radius || other.width/2) + 20; // +20 pour un peu d'espace
+            // Calcul de la distance minimale basée sur le rayon de chaque bulle
+            const minDistance = b.radius + other.radius + 15; 
 
             if (dist < minDistance && dist > 0) {
-                // Force de répulsion : devient plus forte si la distance est petite
                 const force = (minDistance - dist) * 0.05; 
                 b.vx += (dx / dist) * force;
                 b.vy += (dy / dist) * force;
@@ -560,7 +575,7 @@ function animate() {
         b.x += b.vx;
         b.y += b.vy;
 
-        // Empêcher les bulles de sortir du canvas
+        // Limiter le déplacement dans les limites du canvas
         b.x = Math.max(b.radius, Math.min(canvas.width - b.radius, b.x));
         b.y = Math.max(b.radius, Math.min(canvas.height - b.radius, b.y));
     }
@@ -569,9 +584,8 @@ function animate() {
 }
 
 /* Sauvegarde */
-// ** ATTENTION : La sauvegarde doit être modifiée pour conserver les nouvelles propriétés de taille **
 function saveMindmap() {
-    // Les propriétés de taille sont automatiquement incluses car elles sont dans l'objet 'b'
+    // Sauvegarde toutes les propriétés, y compris les nouvelles dimensions
     localStorage.setItem("mindmap_bubbles", JSON.stringify(bubbles)); 
     localStorage.setItem("mindmap_connections", JSON.stringify(connections));
     alert("💾 Carte mentale sauvegardée !");
@@ -583,21 +597,19 @@ function loadMindmap() {
     
     if (savedBubbles.length === 0) return alert("Aucune carte mentale enregistrée !");
     
-    // ** MODIFICATION 6 : Recalculer les propriétés de taille au chargement **
-    // C'est plus sûr de recalculer que de faire confiance aux données stockées si la formule change.
+    // Recalcul des propriétés de taille au chargement pour garantir la cohérence
     bubbles = savedBubbles.map(b => {
-        const isCenter = b.text === localStorage.getItem("theme");
+        const isCenter = b.text === localStorage.getItem("theme") || b.isCenter;
         return {
             ...b,
-            ...calculateBubbleSize(b.text, isCenter) // Recalcule la taille
+            ...calculateBubbleSize(b.text, isCenter) // Recalcule la taille et les lignes
         };
     });
 
     connections = savedConnections.map(c => ({ 
-        // Recherche la bulle par le texte pour reconstruire la connexion
         a: bubbles.find(b => b.text === c.a.text), 
         b: bubbles.find(b => b.text === c.b.text) 
-    })).filter(c => c.a && c.b); // Filtre les connexions invalides (sécurité)
+    })).filter(c => c.a && c.b);
 
     centerBubble = bubbles.find(b => b.isCenter);
 
@@ -607,7 +619,12 @@ function loadMindmap() {
 
 function clearMindmap() { bubbles = []; connections = []; centerBubble = null; draw(); }
 
-window.onload = () => { loadNotes(); loadMindmap(); };
+window.onload = () => { 
+    // Assurer que le contexte est prêt pour la mesure de texte au chargement
+    ctx.font = `${FONT_SIZE}px Poppins`; 
+    loadNotes(); 
+    loadMindmap(); 
+};
 </script>
 </body>
 </html>
